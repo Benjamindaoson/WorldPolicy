@@ -1,0 +1,23 @@
+# WorldPolicy V1.3 research report — 2026-11-03
+
+## Scope and evidence
+
+This report separates **implemented code**, **local CPU execution**, **MuJoCo simulation outcomes** and **unrun cloud/robot work**. Reproduction inputs are frozen JSON protocols in `configs/v13/`; raw demonstrations, checkpoints, trajectories, diagnostic images and videos are in ignored `artifacts/v13/`; audit tables are in ignored `results/v13/`. Each produced checkpoint has a SHA256 and a source commit in its run record. No GPU, official VLA or real-robot experiment is claimed.
+
+## Findings
+
+1. **Historical ACT/Diffusion comparison:** V1.2b's three training seeds share the same 50 evaluation initial states; exact paired tests were reconstructed from episode records. ACT scored 27/50, 35/50, 33/50 versus compact DDPM 5/50, 6/50, 11/50. The DDPM received much less CPU training time, and its MLP denoiser differs substantially from the [Stanford Diffusion Policy reference](https://github.com/real-stanford/diffusion_policy/blob/main/diffusion_policy/policy/diffusion_unet_hybrid_image_policy.py). This is an implementation finding, not an algorithm ranking. See `V13_SCIENTIFIC_AUDIT.md` and `V13_DIFFUSION_POLICY_AUDIT.md`.
+2. **Visual training exposed a sensor error:** V1.3a actually trained three RGB policies, but the stock head/wrist views and virtual goal did not show the task. All three scored 1/20, entirely from the one initially successful reset. This negative result is retained. V1.3b corrected the fixed and proprio-following cameras and rendered the target as a red marker. An 8/3/2-episode, 30-update smoke passed the code chain but students scored 0/2; the successful geometric teacher and failed student were recorded and replay-verified. Formal 128/24/30-episode, 1500-update training is **NOT_RUN**, pending the cloud gate. See `V13_VISUAL_ROBOT_LEARNING.md`.
+3. **Robot world model did not improve control:** The V1.2 learned dynamics CEM scored 3/10 (uncertainty variant 2/10) versus physics-oracle CEM 10/10 on a small exploratory set. No new confirmatory gain was established. See `V13_WORLD_MODEL_PLANNING.md`.
+4. **Complete compact MBRL chain yielded a negative result:** New real replay (1,043 transitions), reward/termination training, uncertainty-filtered imagination (32,000 samples), actor/critic and target updates produced a saved checkpoint. On 10 fresh seeds, model-based actor-critic scored 2/10 versus its BC warmup actor 3/10. This single-seed result cannot establish efficacy. See `V13_MODEL_BASED_RL.md`.
+5. **Official LIBERO/SmolVLA remain unrun:** The local OS is Windows and PyTorch has no CUDA. The [LeRobot LIBERO benchmark](https://huggingface.co/docs/lerobot/main/en/libero) requires Linux; no official benchmark result exists here. Corrective SFT, planner distillation and SO-101 hardware operation also remain unrun or blocked. See their dedicated status documents.
+
+## Cloud gate
+
+The requested Local Development + Cloud GPU Training mode is implemented as a runnable, budget-gated pipeline: verified Git bundle and data hashes; hash-pinned Python 3.12 Linux dependencies; real CUDA five-step preflight; 100-update resumable visual training; GPU utilization and estimated cost logs; fresh-seed evaluation; verified persistent backup. The local preflight saw GTX 1650 4GB but `torch 2.15.0+cpu`, so **CLOUD_GPU_REQUIRED** for the official Linux benchmark and formal cloud run, while the numeric VRAM floor remains **GPU_SIZING_REQUIRED** until a real GPU probe. A provisional 1× RTX 4090 24GB Linux Pod is recommended; [Runpod Secure Cloud quotes $0.89/hour](https://www.runpod.io/pricing) as inspected 2026-11-03. The first visual run is budgeted provisionally at 1–2 GPU hours ($0.89–$1.78 GPU charge, plus storage), subject to measured revision and explicit paid-instance authorization. No paid resource was started.
+
+## Next research decisions
+
+After an authorized Linux GPU probe, run the frozen visual protocol and inspect actual scene success and failure cases. If the corrected visual ACT is still weak, improve data/camera/task design on validation only and reserve a new untouched confirmation set. Then run official ACT, Diffusion and frozen SmolVLA on pinned LIBERO Spatial/Object/Goal with correct relative/absolute action and hard reset; fine-tune only after a separate GPU sizing and budget gate. The model-based planning and RL negative results warrant contact-conditioned diagnostics and matched-budget multi-seed replication before method claims.
+
+L1 remains passed **only for state-only simulation**. L2 and L3 are **not met**. No manuscript-level or real-robot claim is supported.

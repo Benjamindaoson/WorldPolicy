@@ -1,0 +1,5 @@
+# Corrective learning and policy distillation
+
+Status: **NOT_RUN** for corrective SFT and student distillation. This version preserves real failure traces and a successful privileged geometric teacher video, but it has no mined recovery demonstrations, corrective dataset, equal-random-data/equal-success-demo controls, or post-correction checkpoint.
+
+The learned world-model planner scored 3/10 on its exploratory set, while physics-oracle CEM scored 10/10 using simulator snapshots. The oracle is computationally privileged and cannot be treated as a deployable learned teacher. A valid distillation experiment would first freeze a stronger teacher under the same observation and action contract, collect its trajectories with exact checkpoint hashes, train a separate student, and compare paired closed-loop success, inference latency, smoothness and data budget on new seeds. The local V1.3b teacher/student video shows a geometric teacher success and a 30-update smoke student's failure; it is **not** a distillation result.
