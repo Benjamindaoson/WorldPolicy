@@ -70,6 +70,25 @@ def collect_expert(count: int, seed: int = 0) -> list[Episode]:
     return episodes
 
 
+def collect_offline_transitions(count: int, seed: int = 0) -> dict[str, np.ndarray]:
+    """Record every executed transition, including distinct termination and timeout flags."""
+    fields: dict[str, list] = {key: [] for key in
+                               ("state", "action", "reward", "next_state", "terminated", "timeout")}
+    for episode in range(count):
+        env = PointReach(seed + episode)
+        state = env.reset()
+        for _ in range(35):
+            action = expert_action(state)
+            next_state, reward, terminated, timeout, _ = env.step(action)
+            for key, value in zip(fields, (state, action, reward, next_state,
+                                           terminated, timeout and not terminated), strict=True):
+                fields[key].append(value)
+            state = next_state
+            if terminated or timeout:
+                break
+    return {key: np.asarray(value, dtype=np.float32) for key, value in fields.items()}
+
+
 def rollout(policy, seed: int, shift: float = 0.0) -> dict:
     env = PointReach(seed, shift)
     state = env.reset()

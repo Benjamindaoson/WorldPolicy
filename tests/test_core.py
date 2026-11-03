@@ -57,7 +57,7 @@ def test_planner_and_contract():
 def test_iql_update_and_safety():
     agent = IQL(4, 2)
     batch = (torch.randn(8, 4), torch.rand(8, 2), torch.rand(8, 1),
-             torch.randn(8, 4), torch.zeros(8, 1))
+             torch.randn(8, 4), torch.zeros(8, 1), torch.zeros(8, 1))
     metrics = agent.update(batch)
     assert all(np.isfinite(v) for v in metrics.values())
     with pytest.raises(PermissionError):

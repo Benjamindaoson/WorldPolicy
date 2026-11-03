@@ -15,7 +15,7 @@ from .planning import CEMPlanner, PhysicsOracle
 from .policies import ACT, DiffusionPolicy
 from .rl import IQL
 from .safety import RobotGate
-from .simulation import SPEC, collect_expert, expert_action, rollout
+from .simulation import SPEC, collect_expert, collect_offline_transitions, expert_action, rollout
 from .training import load_checkpoint, seed_all, train
 from .world_model import load_dynamics, train_dynamics
 
@@ -77,17 +77,14 @@ def run_planning(seed: int, episodes: int, output: Path) -> dict:
 def run_iql(seed: int, steps: int, output: Path) -> dict:
     seed_all(seed)
     torch.set_num_threads(1)
-    episodes = collect_expert(24, seed)
-    transitions = []
-    for ep in episodes:
-        for i in range(len(ep.actions) - 1):
-            distance = np.linalg.norm(ep.states[i + 1, 2:4])
-            transitions.append((ep.states[i], ep.actions[i], -distance,
-                                ep.states[i + 1], float(i == len(ep.actions) - 2)))
-    arrays = [torch.tensor(np.asarray(column), dtype=torch.float32)
-              for column in zip(*transitions, strict=True)]
+    replay = collect_offline_transitions(24, seed)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(output.with_name("iql_replay.npz"), **replay)
+    arrays = [torch.tensor(replay[key]) for key in
+              ("state", "action", "reward", "next_state", "terminated", "timeout")]
     arrays[2] = arrays[2].unsqueeze(-1)
     arrays[4] = arrays[4].unsqueeze(-1)
+    arrays[5] = arrays[5].unsqueeze(-1)
     agent = IQL(4, 2)
     metrics = {}
     for _ in range(steps):
@@ -95,12 +92,12 @@ def run_iql(seed: int, steps: int, output: Path) -> dict:
         metrics = agent.update(tuple(x[index] for x in arrays))
     results = [rollout(lambda s: agent.act(torch.tensor(s[None])).numpy()[0], seed + 1000 + i)
                for i in range(8)]
-    output.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"actor": agent.actor.state_dict(), "q1": agent.q1.state_dict(),
                 "q2": agent.q2.state_dict(), "value": agent.value.state_dict(),
                 "steps": steps, "seed": seed}, output.with_suffix(".pt"))
     result = {"status": "EXECUTED", "dataset": "physics_oracle_point_reach",
-              "steps": steps, "losses": metrics,
+              "steps": steps, "transitions": len(replay["state"]), "timeouts": int(replay["timeout"].sum()),
+              "terminations": int(replay["terminated"].sum()), "losses": metrics,
               "success_rate": sum(x["success"] for x in results) / len(results), "episodes": results}
     output.write_text(json.dumps(result, indent=2))
     return {k: v for k, v in result.items() if k != "episodes"}
@@ -129,7 +126,7 @@ def main() -> None:
     elif args.command == "plan":
         result = run_planning(args.seed, args.episodes, Path("results/planning.json"))
     elif args.command == "train-iql":
-        result = run_iql(args.seed, args.steps, Path("results/iql.json"))
+        result = run_iql(args.seed, args.steps, Path("results/v11/iql.json"))
     elif args.command == "train-dynamics":
         record = train_dynamics(Path("artifacts/dynamics"), args.seed, args.episodes, args.steps)
         model = load_dynamics(Path("artifacts/dynamics/dynamics.pt"), record["checkpoint_sha256"])

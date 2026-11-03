@@ -16,6 +16,7 @@ class ACT(nn.Module):
         self.state_dim, self.action_dim, self.horizon = state_dim, action_dim, horizon
         self.state_encoder = nn.Linear(state_dim, hidden)
         self.action_encoder = nn.Linear(action_dim, hidden)
+        self.action_position = nn.Parameter(torch.randn(horizon, hidden) * .02)
         self.latent_encoder = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(hidden, heads, hidden * 2, batch_first=True), layers)
         self.posterior = nn.Linear(hidden, latent * 2)
@@ -33,7 +34,7 @@ class ACT(nn.Module):
         if actions is not None:
             if actions.shape != (len(state), self.horizon, self.action_dim):
                 raise ValueError("ACT action chunk dimension mismatch")
-            encoded = self.latent_encoder(self.action_encoder(actions))
+            encoded = self.latent_encoder(self.action_encoder(actions) + self.action_position)
             mu, logvar = self.posterior(encoded.mean(1)).chunk(2, -1)
             z = mu + torch.randn_like(mu) * torch.exp(.5 * logvar)
             kl = -.5 * (1 + logvar - mu.square() - logvar.exp()).sum(-1).mean()
@@ -60,7 +61,11 @@ class DiffusionPolicy(nn.Module):
         super().__init__()
         self.state_dim, self.action_dim, self.horizon = state_dim, action_dim, horizon
         self.timesteps = timesteps
-        beta = torch.linspace(1e-4, .02, timesteps)
+        # Cosine schedule reaches near-isotropic noise even for short smoke runs.
+        grid = torch.linspace(0, 1, timesteps + 1)
+        cumulative = torch.cos((grid + .008) / 1.008 * math.pi / 2).square()
+        cumulative = cumulative / cumulative[0]
+        beta = (1 - cumulative[1:] / cumulative[:-1]).clamp(1e-4, .999)
         self.register_buffer("alpha", 1 - beta)
         self.register_buffer("alpha_bar", torch.cumprod(1 - beta, 0))
         self.net = nn.Sequential(nn.Linear(state_dim + horizon * action_dim + 32, hidden),
@@ -96,7 +101,9 @@ class DiffusionPolicy(nn.Module):
             alpha, abar = self.alpha[step], self.alpha_bar[step]
             x = (x - (1 - alpha) / (1 - abar).sqrt() * self.predict_noise(state, x, t)) / alpha.sqrt()
             if step:
-                x += (1 - alpha).sqrt() * torch.randn_like(x)
+                previous_abar = self.alpha_bar[step - 1]
+                posterior_variance = (1 - previous_abar) / (1 - abar) * (1 - alpha)
+                x += posterior_variance.sqrt() * torch.randn_like(x)
         return x.clamp(-1, 1)
 
     @torch.no_grad()

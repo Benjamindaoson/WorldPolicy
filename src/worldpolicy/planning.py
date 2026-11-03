@@ -84,4 +84,5 @@ class CEMPlanner:
             mean = candidates[elite].mean(axis=0)
             std = np.maximum(candidates[elite].std(axis=0), .05)
         assert best is not None
-        return best[0], {"predicted_cost": best_cost, "model_evidence": self.model.metadata.evidence}
+        return best[0], {"predicted_cost": best_cost, "planned_sequence": best.tolist(),
+                         "model_evidence": self.model.metadata.evidence}

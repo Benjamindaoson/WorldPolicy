@@ -28,8 +28,10 @@ class IQL:
         self.v_opt = torch.optim.Adam(self.value.parameters(), lr=lr)
         self.expectile, self.discount, self.tau = expectile, discount, tau
 
-    def update(self, batch: tuple[Tensor, Tensor, Tensor, Tensor, Tensor]) -> dict:
-        state, action, reward, next_state, done = batch
+    def update(self, batch: tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]) -> dict:
+        state, action, reward, next_state, done, timeout = batch
+        if torch.any((done > 0) & (timeout > 0)):
+            raise ValueError("A transition cannot terminate and time out simultaneously")
         sa = torch.cat([state, action], dim=-1)
         with torch.no_grad():
             q = torch.minimum(self.target_q1(sa), self.target_q2(sa))

@@ -11,9 +11,13 @@ dependencies = ["numpy>=2", "torch>=2.3", "pyyaml>=6"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.11"]
+simulation = ["mujoco>=3.2,<4"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+worldpolicy = ["assets/*.xml"]
 
 [tool.ruff]
 line-length = 100
