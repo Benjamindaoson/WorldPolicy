@@ -11,9 +11,13 @@ from torch import Tensor, nn
 
 class ACT(nn.Module):
     def __init__(self, state_dim: int = 4, action_dim: int = 2, horizon: int = 4,
-                 hidden: int = 64, latent: int = 16, layers: int = 2, heads: int = 4):
+                 hidden: int = 64, latent: int = 16, layers: int = 2, heads: int = 4,
+                 prior_training_fraction: float = .5):
         super().__init__()
         self.state_dim, self.action_dim, self.horizon = state_dim, action_dim, horizon
+        if not 0 <= prior_training_fraction <= 1:
+            raise ValueError("prior_training_fraction must be in [0, 1]")
+        self.prior_training_fraction = prior_training_fraction
         self.state_encoder = nn.Linear(state_dim, hidden)
         self.action_encoder = nn.Linear(action_dim, hidden)
         self.action_position = nn.Parameter(torch.randn(horizon, hidden) * .02)
@@ -37,6 +41,9 @@ class ACT(nn.Module):
             encoded = self.latent_encoder(self.action_encoder(actions) + self.action_position)
             mu, logvar = self.posterior(encoded.mean(1)).chunk(2, -1)
             z = mu + torch.randn_like(mu) * torch.exp(.5 * logvar)
+            if self.training and self.prior_training_fraction:
+                prior_mask = torch.rand((len(state), 1), device=state.device) < self.prior_training_fraction
+                z = torch.where(prior_mask, torch.zeros_like(z), z)
             kl = -.5 * (1 + logvar - mu.square() - logvar.exp()).sum(-1).mean()
         else:
             z = state.new_zeros((len(state), self.latent_project.in_features))

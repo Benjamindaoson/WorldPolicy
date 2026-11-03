@@ -27,7 +27,9 @@ def make_model(kind: str, horizon: int) -> ACT | DiffusionPolicy:
     raise ValueError(f"Unknown policy: {kind}")
 
 
-def evaluate(model: ACT | DiffusionPolicy, seeds: list[int]) -> tuple[list[dict], list[float]]:
+def evaluate(model: ACT | DiffusionPolicy, seeds: list[int],
+             state_mean: np.ndarray | None = None,
+             state_std: np.ndarray | None = None) -> tuple[list[dict], list[float]]:
     rows = []
     latencies = []
     model.eval()
@@ -36,7 +38,8 @@ def evaluate(model: ACT | DiffusionPolicy, seeds: list[int]) -> tuple[list[dict]
 
         def policy(state: np.ndarray) -> np.ndarray:
             start = time.perf_counter()
-            action = model.act(torch.tensor(state[None], dtype=torch.float32))[0].numpy()
+            features = (state - state_mean) / state_std if state_mean is not None else state
+            action = model.act(torch.tensor(features[None], dtype=torch.float32))[0].numpy()
             latencies.append((time.perf_counter() - start) * 1000)
             return action
 
@@ -78,6 +81,14 @@ def run(config_path: Path, output: Path, *, training_seeds: list[int] | None = N
             raise ValueError("Dataset seed leakage")
         x, y = chunks(train_pairs, config["action_chunk"])
         vx, vy = chunks(val_pairs, config["action_chunk"])
+        if config.get("state_normalization") == "zscore":
+            state_mean = x.mean(axis=0)
+            state_std = np.maximum(x.std(axis=0), .01)
+            x = (x - state_mean) / state_std
+            vx = (vx - state_mean) / state_std
+            np.savez(root / "state_normalization.npz", mean=state_mean, std=state_std)
+        else:
+            state_mean = state_std = None
         dataset_hash = sha256((root / "train_dataset" / "manifest.json").read_bytes()).hexdigest()
         run_rows = {"dataset_manifest_sha256": dataset_hash,
                     "training_successes": sum(ep.success for ep in train_episodes),
@@ -95,8 +106,8 @@ def run(config_path: Path, output: Path, *, training_seeds: list[int] | None = N
             with torch.no_grad():
                 predicted = model(torch.tensor(vx))[0] if kind == "act" else model.sample(torch.tensor(vx))
                 validation_mse = float(torch.square(predicted - torch.tensor(vy)).mean())
-            exploration_rows, _ = evaluate(model, exploratory)
-            confirm_rows, latency = evaluate(model, confirm)
+            exploration_rows, _ = evaluate(model, exploratory, state_mean, state_std)
+            confirm_rows, latency = evaluate(model, confirm, state_mean, state_std)
             success = sum(row["success"] for row in confirm_rows)
             detail = {"training": training, "training_seed": seed,
                       "dataset_manifest_sha256": dataset_hash,

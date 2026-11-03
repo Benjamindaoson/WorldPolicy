@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import gymnasium as gym
 import gymnasium_robotics
 import mujoco
@@ -13,6 +15,20 @@ gym.register_envs(gymnasium_robotics)
 
 SPEC = ActionSpec("fetch_push_v4", 4, "normalized_cartesian_delta", "world_xyz+gripper",
                   25.0, (-1., -1., -1., -1.), (1., 1., 1., 1.))
+
+
+@dataclass(frozen=True)
+class FetchSnapshot:
+    qpos: np.ndarray
+    qvel: np.ndarray
+    act: np.ndarray
+    ctrl: np.ndarray
+    mocap_pos: np.ndarray
+    mocap_quat: np.ndarray
+    warmstart: np.ndarray
+    time: float
+    goal: np.ndarray
+    elapsed_steps: int
 
 
 def flatten(observation: dict) -> np.ndarray:
@@ -50,17 +66,25 @@ class FetchPush:
             raise RuntimeError("Rendering was not enabled")
         return frame
 
-    def snapshot(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+    def snapshot(self) -> FetchSnapshot:
         raw = self.env.unwrapped
-        return (raw.data.qpos.copy(), raw.data.qvel.copy(), raw.goal.copy(),
-                self.env._elapsed_steps)
+        return FetchSnapshot(raw.data.qpos.copy(), raw.data.qvel.copy(), raw.data.act.copy(),
+                             raw.data.ctrl.copy(), raw.data.mocap_pos.copy(),
+                             raw.data.mocap_quat.copy(), raw.data.qacc_warmstart.copy(),
+                             float(raw.data.time), raw.goal.copy(), self.env._elapsed_steps)
 
-    def restore(self, snapshot: tuple[np.ndarray, np.ndarray, np.ndarray, int]) -> np.ndarray:
+    def restore(self, snapshot: FetchSnapshot) -> np.ndarray:
         raw = self.env.unwrapped
-        raw.data.qpos[:] = snapshot[0]
-        raw.data.qvel[:] = snapshot[1]
-        raw.goal = snapshot[2].copy()
-        self.env._elapsed_steps = snapshot[3]
+        raw.data.qpos[:] = snapshot.qpos
+        raw.data.qvel[:] = snapshot.qvel
+        raw.data.act[:] = snapshot.act
+        raw.data.ctrl[:] = snapshot.ctrl
+        raw.data.mocap_pos[:] = snapshot.mocap_pos
+        raw.data.mocap_quat[:] = snapshot.mocap_quat
+        raw.data.qacc_warmstart[:] = snapshot.warmstart
+        raw.data.time = snapshot.time
+        raw.goal = snapshot.goal.copy()
+        self.env._elapsed_steps = snapshot.elapsed_steps
         mujoco.mj_forward(raw.model, raw.data)
         self.raw = raw._get_obs()
         return flatten(self.raw)
