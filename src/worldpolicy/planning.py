@@ -14,10 +14,15 @@ from .simulation import SPEC
 @dataclass(frozen=True)
 class WorldModelMetadata:
     model_id: str
+    architecture: str
     checkpoint_id: str
     version: str
     action_spec: ActionSpec
+    state_dim: int
+    observation_shape: tuple[int, ...]
     horizon: int
+    output_schema: str
+    uncertainty_type: str
     evidence: str
 
 
@@ -31,14 +36,17 @@ class WorldModelAdapter(Protocol):
 def check_contract(model: WorldModelAdapter, spec: ActionSpec, horizon: int) -> None:
     if model.metadata.action_spec != spec or model.metadata.horizon < horizon:
         raise ValueError("World model action protocol or horizon mismatch")
+    if model.metadata.state_dim < 1 or model.metadata.observation_shape != (model.metadata.state_dim,):
+        raise ValueError("World model state protocol mismatch")
 
 
 class PhysicsOracle:
     """Known Euler dynamics, explicitly NOT a learned world model."""
 
     def __init__(self, horizon: int = 8):
-        self.metadata = WorldModelMetadata("point_reach_physics", "none", "1", SPEC,
-                                           horizon, "physics_oracle")
+        self.metadata = WorldModelMetadata("point_reach_physics", "known_euler", "none",
+                                           "1", SPEC, 4, (4,), horizon,
+                                           "state_trajectory", "zero", "physics_oracle")
 
     def predict(self, state: np.ndarray, actions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         position = np.broadcast_to(state[:2], (len(actions), 2)).copy()
@@ -63,6 +71,8 @@ class CEMPlanner:
         self.uncertainty_weight = uncertainty_weight
 
     def plan(self, state: np.ndarray) -> tuple[np.ndarray, dict]:
+        if state.shape != self.model.metadata.observation_shape or not np.isfinite(state).all():
+            raise ValueError("Planner state protocol mismatch")
         dims = self.spec.dimension
         mean = np.zeros((self.horizon, dims))
         std = np.ones_like(mean)

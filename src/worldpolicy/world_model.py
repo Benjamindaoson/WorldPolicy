@@ -29,8 +29,10 @@ class LearnedPointDynamics:
         if len(models) < 2:
             raise ValueError("At least two models needed for ensemble uncertainty")
         self.models = [m.eval() for m in models]
-        self.metadata = WorldModelMetadata("learned_point_dynamics", checkpoint_id, "1",
-                                           SPEC, horizon, "learned_dynamics")
+        self.metadata = WorldModelMetadata("learned_point_dynamics", "three_mlp_ensemble",
+                                           checkpoint_id, "1", SPEC, 4, (4,), horizon,
+                                           "state_trajectory", "ensemble_state_variance",
+                                           "learned_dynamics")
 
     @torch.no_grad()
     def predict(self, state: np.ndarray, actions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

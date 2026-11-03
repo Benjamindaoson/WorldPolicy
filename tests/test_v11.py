@@ -20,6 +20,7 @@ def test_mujoco_reset_restore_and_expert():
     env.step(action)
     env.restore(snapshot)
     np.testing.assert_allclose(env.observe(), first, atol=1e-6)
+    assert env.data.time == snapshot[4]
     assert env.rgb().shape == (96, 96, 3)
     episodes = collect_expert(2, 42)
     assert all(e.success for e in episodes)
@@ -72,6 +73,8 @@ def test_cem_seed_repeatability_and_bounds():
     np.testing.assert_allclose(action_a, action_b)
     assert info_a == info_b
     assert np.all(action_a >= -1) and np.all(action_a <= 1)
+    with pytest.raises(ValueError, match="state protocol"):
+        a.plan(np.zeros(8))
 
 
 def test_checkpoint_resume(tmp_path):

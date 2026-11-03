@@ -67,15 +67,18 @@ class MuJoCoReach:
         return self.observe(), -distance, success, truncated, {"success": success,
                                                                "distance": distance}
 
-    def snapshot(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
-        return (self.data.qpos.copy(), self.data.qvel.copy(), self.target.copy(), self.steps)
+    def snapshot(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, int, float, np.ndarray]:
+        return (self.data.qpos.copy(), self.data.qvel.copy(), self.target.copy(),
+                self.steps, float(self.data.time), self.data.ctrl.copy())
 
-    def restore(self, snapshot: tuple[np.ndarray, np.ndarray, np.ndarray, int]) -> None:
+    def restore(self, snapshot: tuple[np.ndarray, np.ndarray, np.ndarray, int, float, np.ndarray]) -> None:
         self.data.qpos[:] = snapshot[0]
         self.data.qvel[:] = snapshot[1]
         self.target = snapshot[2].copy()
         self.model.site_pos[self.target_id] = self.target
         self.steps = snapshot[3]
+        self.data.time = snapshot[4]
+        self.data.ctrl[:] = snapshot[5]
         mujoco.mj_forward(self.model, self.data)
 
     def expert_action(self) -> np.ndarray:

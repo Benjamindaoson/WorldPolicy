@@ -11,6 +11,7 @@ import torch
 from .data import chunks, load_dataset, save_dataset
 from .mujoco_reach import MuJoCoReach, collect_expert, rollout
 from .policies import ACT, DiffusionPolicy
+from .statistics import paired_counts, wilson_interval
 from .training import load_checkpoint, seed_all, train
 
 
@@ -52,7 +53,9 @@ def run(output: Path, train_episodes: int = 64, updates: int = 500,
         success = sum(e["success"] for e in episodes)
         detail = {"training": training, "validation_action_mse": action_mse,
                   "evaluation_successes": success, "evaluation_episodes": evaluation_episodes,
-                  "success_rate": success / evaluation_episodes, "episodes": episodes}
+                  "success_rate": success / evaluation_episodes,
+                  "wilson_95": wilson_interval(success, evaluation_episodes),
+                  "episodes": episodes}
         (policy_dir / "evaluation.json").write_text(json.dumps(detail, indent=2))
         outcome["policies"][kind] = {k: v for k, v in detail.items() if k != "episodes"}
     expert = []
@@ -67,6 +70,10 @@ def run(output: Path, train_episodes: int = 64, updates: int = 500,
                        "final_distance": info["distance"]})
     outcome["expert"] = {"successes": sum(e["success"] for e in expert),
                          "episodes": expert}
+    act_rows = json.loads((output / "act" / "evaluation.json").read_text())["episodes"]
+    diffusion_rows = json.loads((output / "diffusion" / "evaluation.json").read_text())["episodes"]
+    outcome["paired_act_diffusion"] = paired_counts(
+        [e["success"] for e in act_rows], [e["success"] for e in diffusion_rows])
     (output / "summary.json").write_text(json.dumps(outcome, indent=2))
     return {**outcome, "expert": {"successes": outcome["expert"]["successes"],
                                 "episode_count": evaluation_episodes}}
