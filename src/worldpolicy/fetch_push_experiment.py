@@ -27,6 +27,27 @@ def make_model(kind: str, horizon: int) -> ACT | DiffusionPolicy:
     raise ValueError(f"Unknown policy: {kind}")
 
 
+def validate_seed_partitions(config: dict) -> None:
+    groups = []
+    for train_start, validation_start in zip(
+        config["train_episode_start_seeds"], config["validation_episode_start_seeds"], strict=True
+    ):
+        groups.append(set(range(train_start, train_start + config["train_episodes_per_seed"])))
+        groups.append(set(range(validation_start, validation_start + config["validation_episodes_per_seed"])))
+    groups.extend([
+        set(config["exploratory_evaluation_seeds"]),
+        set(range(config["confirmatory_evaluation_seed_start"],
+                  config["confirmatory_evaluation_seed_start"] + config["confirmatory_evaluation_episodes"])),
+        set(range(config["ood_evaluation_seed_start"],
+                  config["ood_evaluation_seed_start"] + config["ood_evaluation_episodes"])),
+    ])
+    if any(not group for group in groups):
+        raise ValueError("Empty experiment seed partition")
+    for index, left in enumerate(groups):
+        if any(left & right for right in groups[index + 1:]):
+            raise ValueError("Experiment seed partition leakage")
+
+
 def evaluate(model: ACT | DiffusionPolicy, seeds: list[int],
              state_mean: np.ndarray | None = None,
              state_std: np.ndarray | None = None) -> tuple[list[dict], list[float]]:
@@ -50,6 +71,7 @@ def evaluate(model: ACT | DiffusionPolicy, seeds: list[int],
 def run(config_path: Path, output: Path, *, training_seeds: list[int] | None = None) -> dict:
     config_bytes = config_path.read_bytes()
     config = json.loads(config_bytes)
+    validate_seed_partitions(config)
     seeds = training_seeds or config["training_seeds"]
     if any(seed not in config["training_seeds"] for seed in seeds):
         raise ValueError("Training seed outside frozen protocol")

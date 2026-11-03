@@ -1,7 +1,11 @@
+import json
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from worldpolicy.fetch_push import SPEC, FetchPush, PushExpert, collect_expert, rollout
+from worldpolicy.fetch_push_experiment import validate_seed_partitions
 
 
 def test_fetch_push_reset_restore_and_action_contract():
@@ -35,3 +39,11 @@ def test_friction_shift_isolated_to_new_environment():
     assert shifted_friction == pytest.approx(2 * nominal_friction)
     nominal.close()
     shifted.close()
+
+
+def test_frozen_seed_partitions_reject_leakage():
+    config = json.loads(Path("configs/v12/fetch_push_protocol_b.json").read_text())
+    validate_seed_partitions(config)
+    config["validation_episode_start_seeds"][0] = config["train_episode_start_seeds"][0]
+    with pytest.raises(ValueError, match="leakage"):
+        validate_seed_partitions(config)
