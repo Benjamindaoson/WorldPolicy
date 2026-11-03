@@ -19,6 +19,9 @@ def test_episode_and_integrity(tmp_path):
     assert len(chunks(pairs, 4)[0]) > 0
     splits = split_episodes([e.episode_id for e in episodes])
     assert len(set(splits["train"]) & set(splits["test"])) == 0
+    assert all(splits.values())
+    with pytest.raises(ValueError, match="three unique"):
+        split_episodes(["only_one"])
     file = next(tmp_path.glob("*.npz"))
     file.write_bytes(b"corrupt")
     with pytest.raises(ValueError, match="integrity"):

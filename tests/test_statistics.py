@@ -1,6 +1,6 @@
 import pytest
 
-from worldpolicy.statistics import paired_counts, wilson_interval
+from worldpolicy.statistics import exact_mcnemar_pvalue, paired_counts, wilson_interval
 
 
 def test_wilson_and_pairing():
@@ -12,3 +12,4 @@ def test_wilson_and_pairing():
         wilson_interval(2, 1)
     with pytest.raises(ValueError):
         paired_counts([True], [])
+    assert exact_mcnemar_pvalue({"only_a": 8, "only_b": 2}) == pytest.approx(.109375)

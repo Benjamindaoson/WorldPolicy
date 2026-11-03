@@ -105,11 +105,14 @@ def load_dataset(directory: Path) -> tuple[list[tuple[np.ndarray, np.ndarray]], 
 
 def split_episodes(ids: list[str], seed: int = 0) -> dict[str, list[str]]:
     """Stable episode-level split, never sharing an episode between partitions."""
+    if len(ids) < 3 or len(set(ids)) != len(ids):
+        raise ValueError("At least three unique episodes are required for train/validation/test")
     ordered = list(np.random.default_rng(seed).permutation(sorted(ids)))
     n = len(ordered)
-    return {"train": ordered[: max(1, int(.7*n))],
-            "validation": ordered[max(1, int(.7*n)):int(.85*n)],
-            "test": ordered[int(.85*n):]}
+    train_end = min(max(1, int(.7 * n)), n - 2)
+    validation_end = min(max(train_end + 1, int(.85 * n)), n - 1)
+    return {"train": ordered[:train_end], "validation": ordered[train_end:validation_end],
+            "test": ordered[validation_end:]}
 
 
 def chunks(episodes: list[tuple[np.ndarray, np.ndarray]], horizon: int) -> tuple[np.ndarray, np.ndarray]:

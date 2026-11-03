@@ -22,3 +22,13 @@ def paired_counts(a: list[bool], b: list[bool]) -> dict[str, int]:
             "only_a": sum(x and not y for x, y in zip(a, b, strict=True)),
             "only_b": sum(not x and y for x, y in zip(a, b, strict=True)),
             "both_fail": sum(not x and not y for x, y in zip(a, b, strict=True))}
+
+
+def exact_mcnemar_pvalue(counts: dict[str, int]) -> float:
+    """Two-sided exact binomial test on discordant paired outcomes."""
+    a, b = counts["only_a"], counts["only_b"]
+    n = a + b
+    if n == 0:
+        return 1.0
+    tail = sum(math.comb(n, k) for k in range(min(a, b) + 1)) / (2**n)
+    return min(1.0, 2 * tail)
