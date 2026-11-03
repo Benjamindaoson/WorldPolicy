@@ -1,0 +1,7 @@
+# MuJoCo two-link arm reach
+
+Status: IMPLEMENTED / TESTED / CPU_VERIFIED. Model: `src/worldpolicy/assets/two_link_reach.xml`. Simulator: MuJoCo 3.17.0 on Windows, CPU. The arm has two damped hinge joints, mass/inertia, position servos, joint limits, a tip site, a target site, and an offscreen camera. It is a **custom simplified arm**, not Panda, LIBERO, pushing, grasping, or real hardware.
+
+Actions are clipped joint velocities in rad/s at 20 Hz; the controller converts them to position-servo targets and advances ten 0.005 s MuJoCo steps. Observation is 8D: joint positions, joint velocities, tip x/z, target-minus-tip x/z. Success is tip distance < 0.035 m within 80 control steps. The Jacobian pseudo-inverse expert generated 64 training demonstrations. `snapshot`/`restore` and 96×96 RGB rendering were tested. Episode rollouts store seed, initial joints, target, state, action, reward, termination and simulator version; RGB recording is available through `rollout(..., record_rgb=True)` but the reported training run did not save videos.
+
+Run: `.\\.venv\\Scripts\\python.exe -m worldpolicy.mujoco_experiment --train-episodes 64 --updates 500 --evaluation-episodes 12`. Artifacts: `artifacts/v11/mujoco_reach/`. The training episodes use seeds 1011–1074, with an episode-level 80/20 train/validation split. Evaluation uses untouched seeds 2011–2022 for both policies. Model checkpoints and full trajectories are saved locally. This is a small reach task and is insufficient to establish general robot manipulation ability.

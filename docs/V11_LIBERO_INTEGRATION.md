@@ -1,0 +1,7 @@
+# Official LIBERO / LeRobot integration
+
+Status: BLOCKED locally / NOT_RUN. Current host is Windows with no installed WSL distribution, `lerobot`, `libero`, or `robosuite`. Official [LeRobot LIBERO guidance](https://huggingface.co/docs/lerobot/libero) requires Linux. The current Windows MuJoCo arm task is separate from LIBERO.
+
+Read-only prerequisite command: `python scripts/libero_linux_preflight.py` (returns nonzero until Linux and required packages are present). On an isolated Linux environment, follow the [official installation instructions](https://huggingface.co/docs/lerobot/installation), pin the LeRobot and LIBERO commits and dataset revision, then install LeRobot's `.[libero]` extra. Set `MUJOCO_GL=egl` for headless rendering. Use official `lerobot-eval --policy.path=<checkpoint> --env.type=libero --env.task=libero_spatial --eval.n_episodes=10` after loading a compatible official checkpoint. Do not pass the custom 2D arm checkpoint: official LIBERO observations include 8D state plus two cameras and its action is 7D end-effector/gripper control. Match relative/absolute control mode and normalization keys before inference.
+
+No official dataset was downloaded; no SmolVLA weights were loaded; no LIBERO success rate is reported. The recommended `lerobot/libero` dataset is about 1.9 GB according to current official docs, so downloading should be an explicit, pinned experiment step rather than an import side effect.

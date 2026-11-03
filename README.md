@@ -1,6 +1,6 @@
 # WorldPolicy
 
-World-model-guided robot learning and policy improvement. This repository currently contains **research baselines**, not a validated robot manipulation result.
+World-model-guided robot learning and policy improvement. This repository contains **small research baselines**, including an actual MuJoCo two-joint arm reach simulation. It does not contain a validated manipulation benchmark result.
 
 ## Research question
 
@@ -15,6 +15,7 @@ Can learned world models improve robot policies under fixed data, compute, and i
 - Trained point-reach dynamics ensemble, uncertainty estimate, and a paired held-out CEM comparison. The learned planner underperformed the physics oracle in this small run.
 - Continuous-action IQL with expectile value regression, double Q targets, and advantage-weighted actor update.
 - Fail-closed real-robot gate. There is no motor-control transport in this version.
+- V1.1: custom MuJoCo two-joint reach, paired ACT/Diffusion training and evaluation, corrected diffusion schedule and IQL replay, checkpoint resume, and CEM failure diagnostics. See [V1.1 report](docs/V11_EXPERIMENT_REPORT.md).
 
 ## Reproduction
 
@@ -29,6 +30,9 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m worldpolicy.cli plan
 .\.venv\Scripts\python.exe -m worldpolicy.cli train-iql
 .\.venv\Scripts\python.exe -m worldpolicy.cli train-dynamics
+.\.venv\Scripts\python.exe -m pip install -e ".[simulation]"
+.\.venv\Scripts\python.exe -m worldpolicy.mujoco_experiment
+.\.venv\Scripts\python.exe -m worldpolicy.diagnostics
 ```
 
 Training artifacts and evaluation episode records are generated under ignored `artifacts/` and `results/`. They are local evidence and are not committed as scientific results. See `docs/IMPLEMENTATION_STATUS.md` for actual execution status and limitations.
@@ -39,4 +43,4 @@ All actions carry embodiment, dimension, unit, frame, frequency, and bounds. Pla
 
 ## Research roadmap
 
-Next: actual MuJoCo or LIBERO task integration, paired OOD evaluations, trained dynamics export, model-based RL, corrective-data controls, official SmolVLA/OpenPI adapters, and supervised SO-101 commissioning. These are **not implemented or validated** in this initial version.
+Next: official LIBERO integration on Linux, paired OOD evaluations, MuJoCo arm dynamics and planning, model-based RL, corrective-data controls, official SmolVLA/OpenPI adapters, and supervised SO-101 commissioning. These are **not implemented or validated** in V1.1.
