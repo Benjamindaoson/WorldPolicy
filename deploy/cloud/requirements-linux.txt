@@ -1,0 +1,14 @@
+# Versions observed in the local V1.3 environment. Linux CUDA wheel availability is
+# checked by cloud_preflight.py before any formal run.
+torch==2.15.0
+numpy==2.5.4
+gymnasium==1.4.0
+gymnasium-robotics==1.4.2
+mujoco==3.17.0
+imageio==2.38.1
+imageio-ffmpeg==0.8.0
+Pillow==13.0.0
+PyYAML==6.0.3
+setuptools==84.2.1
+pytest==9.2.0
+ruff==0.17.3
