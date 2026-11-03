@@ -36,9 +36,10 @@ def run(root: Path, output: Path, seeds: list[int], friction_scale: float = 2.0)
                 for seed in seeds:
                     torch.manual_seed(seed + 700000)
 
-                    def policy(state: np.ndarray) -> np.ndarray:
-                        features = (state - normalizer["mean"]) / normalizer["std"]
-                        return model.act(torch.tensor(features[None], dtype=torch.float32))[0].numpy()
+                    def policy(state: np.ndarray, trained_model=model,
+                               mean=normalizer["mean"], std=normalizer["std"]) -> np.ndarray:
+                        features = (state - mean) / std
+                        return trained_model.act(torch.tensor(features[None], dtype=torch.float32))[0].numpy()
 
                     rows.append(rollout(seed, policy, friction_scale=scale))
                 successes = sum(row["success"] for row in rows)
