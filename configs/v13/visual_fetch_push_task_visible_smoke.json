@@ -1,0 +1,20 @@
+{
+  "protocol_id": "v13b_task_visible_local_smoke_20261103",
+  "camera_setup": "task_visible",
+  "training_episode_seed_start": 103000,
+  "training_episodes": 8,
+  "validation_episode_seed_start": 103100,
+  "validation_episodes": 3,
+  "confirmatory_episode_seed_start": 103200,
+  "confirmatory_episodes": 2,
+  "camera_shift_m": [0.05, 0.0, 0.0],
+  "camera_shift_evaluation_episodes": 0,
+  "training_seed": 41,
+  "updates": 30,
+  "batch_size": 8,
+  "learning_rate": 0.0005,
+  "observation_history": 2,
+  "action_chunk": 4,
+  "student_input": "fixed and wrist-following RGB with visible target marker; optional robot proprioception",
+  "model_selection": "smoke only; no research inference"
+}

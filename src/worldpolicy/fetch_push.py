@@ -41,19 +41,24 @@ class FetchPush:
 
     def __init__(self, seed: int, render: bool = False, max_steps: int = 80,
                  friction_scale: float = 1.0,
-                 camera_shift: tuple[float, float, float] = (0.0, 0.0, 0.0)):
+                 camera_shift: tuple[float, float, float] = (0.0, 0.0, 0.0),
+                 camera_setup: str = "legacy"):
         self.seed = seed
         self.max_steps = max_steps
         if friction_scale <= 0:
             raise ValueError("friction_scale must be positive")
         self.friction_scale = friction_scale
         self.camera_shift = camera_shift
+        if camera_setup not in ("legacy", "task_visible"):
+            raise ValueError("Unknown FetchPush camera setup")
+        self.camera_setup = camera_setup
         self.env = gym.make("FetchPushDense-v4", max_episode_steps=max_steps,
                             render_mode="rgb_array" if render else None)
         object_geom = self.env.unwrapped.model.geom("object0").id
         self.env.unwrapped.model.geom_friction[object_geom] *= friction_scale
-        head_camera = self.env.unwrapped.model.camera("head_camera_rgb").id
-        self.env.unwrapped.model.cam_pos[head_camera] += camera_shift
+        fixed_name = "head_camera_rgb" if camera_setup == "legacy" else "external_camera_0"
+        fixed_camera = self.env.unwrapped.model.camera(fixed_name).id
+        self.env.unwrapped.model.cam_pos[fixed_camera] += camera_shift
         self._renderer: mujoco.Renderer | None = None
         self.raw: dict | None = None
 
@@ -84,8 +89,30 @@ class FetchPush:
         if self._renderer.height != size or self._renderer.width != size:
             raise ValueError("Camera resolution changed within one episode")
         frames = []
-        for name in ("head_camera_rgb", "gripper_camera_rgb"):
-            self._renderer.update_scene(self.env.unwrapped.data, camera=name)
+        cameras: tuple[str | mujoco.MjvCamera, ...]
+        if self.camera_setup == "legacy":
+            cameras = ("head_camera_rgb", "gripper_camera_rgb")
+        else:
+            wrist = mujoco.MjvCamera()
+            wrist.type = mujoco.mjtCamera.mjCAMERA_FREE
+            # The camera follows robot proprioception only; object and target do not steer it.
+            wrist.lookat[:] = self.raw["observation"][:3]
+            wrist.distance = .6
+            wrist.azimuth = 180
+            wrist.elevation = -45
+            cameras = ("external_camera_0", wrist)
+        for camera in cameras:
+            self._renderer.update_scene(self.env.unwrapped.data, camera=camera)
+            if self.camera_setup == "task_visible":
+                # FetchPush's desired goal is virtual. Render its task specification as a
+                # visible marker; the student receives pixels, never numeric goal coordinates.
+                scene = self._renderer.scene
+                marker = scene.geoms[scene.ngeom]
+                mujoco.mjv_initGeom(marker, mujoco.mjtGeom.mjGEOM_SPHERE,
+                                    np.array([.018, .018, .018]),
+                                    self.raw["desired_goal"].astype(float),
+                                    np.eye(3).ravel(), np.array([1., .1, .1, 1.]))
+                scene.ngeom += 1
             frames.append(self._renderer.render().copy())
         return np.stack(frames)
 

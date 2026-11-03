@@ -12,6 +12,7 @@ import numpy as np
 from .fetch_push import SPEC, FetchPush, PushExpert
 
 CAMERAS = ("head_camera_rgb", "gripper_camera_rgb")
+TASK_VISIBLE_CAMERAS = ("external_camera_0", "wrist_follow_camera")
 PROPRIO_INDICES = (0, 1, 2, 9, 10, 20, 21, 22, 23, 24)
 
 
@@ -43,8 +44,9 @@ class VisualEpisode:
             raise ValueError("Action exceeds FetchPush bounds")
 
 
-def collect_visual_episode(seed: int, camera_shift: tuple[float, float, float] = (0, 0, 0)) -> VisualEpisode:
-    env = FetchPush(seed, camera_shift=camera_shift)
+def collect_visual_episode(seed: int, camera_shift: tuple[float, float, float] = (0, 0, 0),
+                           camera_setup: str = "legacy") -> VisualEpisode:
+    env = FetchPush(seed, camera_shift=camera_shift, camera_setup=camera_setup)
     state = env.reset()
     teacher = PushExpert()
     images, proprio, actions = [], [], []
@@ -65,21 +67,31 @@ def collect_visual_episode(seed: int, camera_shift: tuple[float, float, float] =
     return episode
 
 
-def save_visual_dataset(episodes: list[VisualEpisode], directory: Path) -> dict:
+def save_visual_dataset(episodes: list[VisualEpisode], directory: Path,
+                        camera_setup: str = "legacy") -> dict:
     if not episodes:
         raise ValueError("Visual dataset cannot be empty")
     if len({ep.seed for ep in episodes}) != len(episodes):
         raise ValueError("Duplicate visual episode seed")
     directory.mkdir(parents=True, exist_ok=True)
-    calibration_env = FetchPush(episodes[0].seed)
+    calibration_env = FetchPush(episodes[0].seed, camera_setup=camera_setup)
     calibration = {}
-    for name in CAMERAS:
+    cameras = CAMERAS if camera_setup == "legacy" else TASK_VISIBLE_CAMERAS
+    for name in cameras:
+        if name == "wrist_follow_camera":
+            calibration[name] = {"mount": "proprioception-following free camera",
+                                 "lookat": "current gripper xyz", "distance_m": .6,
+                                 "azimuth_degrees": 180, "elevation_degrees": -45}
+            continue
         camera = calibration_env.env.unwrapped.model.camera(name)
         calibration[name] = {"local_position_m": camera.pos.tolist(),
                              "local_quaternion_wxyz": camera.quat.tolist(),
                              "field_of_view_degrees": float(camera.fovy[0])}
     calibration_env.close()
-    manifest = {"schema": 1, "task": "FetchPushDense-v4", "cameras": CAMERAS,
+    manifest = {"schema": 1, "task": "FetchPushDense-v4", "cameras": cameras,
+                "camera_setup": camera_setup,
+                "goal_specification": "red rendered target marker" if camera_setup == "task_visible"
+                else "virtual numeric target, not visually rendered",
                 "resolution": [64, 64], "proprio_indices_in_official_observation": PROPRIO_INDICES,
                 "camera_calibration_frame": "MuJoCo model local; wrist world pose varies with robot",
                 "camera_calibration": calibration,

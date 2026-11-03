@@ -1,0 +1,20 @@
+{
+  "protocol_id": "v13b_task_visible_cloud_candidate_20261103",
+  "camera_setup": "task_visible",
+  "training_episode_seed_start": 100000,
+  "training_episodes": 128,
+  "validation_episode_seed_start": 101000,
+  "validation_episodes": 24,
+  "confirmatory_episode_seed_start": 102000,
+  "confirmatory_episodes": 30,
+  "camera_shift_m": [0.05, 0.0, 0.0],
+  "camera_shift_evaluation_episodes": 10,
+  "training_seed": 41,
+  "updates": 1500,
+  "batch_size": 32,
+  "learning_rate": 0.0005,
+  "observation_history": 2,
+  "action_chunk": 4,
+  "student_input": "fixed and wrist-following RGB with visible target marker; optional robot proprioception",
+  "model_selection": "final checkpoint fixed; no confirmation-set tuning"
+}

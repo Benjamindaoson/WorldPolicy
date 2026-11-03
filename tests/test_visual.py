@@ -50,3 +50,16 @@ def test_visual_chunk_alignment():
     assert proprio.shape[1:] == (2, 10)
     np.testing.assert_equal(images[0, 0], episode.images[0])
     np.testing.assert_equal(actions[0], episode.actions[:4])
+
+
+def test_task_visible_cameras_show_target_and_object():
+    from worldpolicy.fetch_push import FetchPush
+
+    env = FetchPush(90000, camera_setup="task_visible")
+    env.reset()
+    image = env.camera_frames()
+    env.close()
+    assert image.shape == (2, 64, 64, 3)
+    # The explicit red task marker and dark object are visible in both views.
+    assert all(np.count_nonzero(frame[:, :, 0] > frame[:, :, 1] + 80) > 3 for frame in image)
+    assert all(np.count_nonzero(np.mean(frame, axis=-1) < 80) > 3 for frame in image)
