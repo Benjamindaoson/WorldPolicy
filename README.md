@@ -32,6 +32,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m worldpolicy.cli train-dynamics
 .\.venv\Scripts\python.exe -m pip install -e ".[simulation]"
 .\.venv\Scripts\python.exe -m worldpolicy.mujoco_experiment
+.\.venv\Scripts\python.exe scripts/record_mujoco_failure.py
 .\.venv\Scripts\python.exe -m worldpolicy.diagnostics
 ```
 

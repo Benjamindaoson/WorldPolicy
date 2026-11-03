@@ -5,6 +5,7 @@
 | V1 audit and fixes | TESTED | `V11_V1_AUDIT.md`; 15+ pytest cases |
 | MuJoCo arm reach and RGB renderer | CPU_VERIFIED | `mujoco_reach.py`, `assets/two_link_reach.xml` |
 | MuJoCo ACT / Diffusion checkpoints | CPU_VERIFIED | `artifacts/v11/mujoco_reach/{act,diffusion}/` |
+| MuJoCo failure video replay | CPU_VERIFIED | `artifacts/v11/mujoco_reach/act/failed_seed_2014.mp4` |
 | Point-reach CEM diagnosis | CPU_VERIFIED | `artifacts/v11/point_reach_diagnostics.json` |
 | Corrected IQL replay | CPU_VERIFIED | `results/v11/iql.json`, `iql_replay.npz` |
 | MuJoCo learned-world-model planning | NOT_RUN | Train compatible arm dynamics and validate on held-out transitions |

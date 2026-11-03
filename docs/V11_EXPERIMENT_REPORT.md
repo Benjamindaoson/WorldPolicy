@@ -13,3 +13,5 @@ All results are **SIMULATION** on local CPU PyTorch 2.15.0. MuJoCo 3.17.0 ran a 
 | Corrected point-reach IQL | 24 expert episodes / 100 updates | 1007–1014 | 3/8 |
 
 The CEM horizon-4 result was selected on the diagnostic cases and needs fresh-seed validation. V1 IQL's 5/8 was based on incorrect terminal labeling; do not compare it as a valid IQL result. MuJoCo ACT/Diffusion differ in training wall time (about 18.1 s versus 1.1 s) and cannot support an equal-compute conclusion. No GPU training or actual robot experiment occurred. No LIBERO benchmark or official VLA result exists.
+
+Failed ACT evaluation seed 2014 was reproduced after checkpoint reload. Its 80 RGB frames were encoded as `artifacts/v11/mujoco_reach/act/failed_seed_2014.mp4`; the matching state/action/reward trace is in `failed_seed_2014.json`. This video is local ignored evidence and was not pushed.
