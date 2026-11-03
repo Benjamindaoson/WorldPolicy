@@ -1,0 +1,16 @@
+{
+  "protocol_id": "fetch_push_v12c_equal_cpu_time_20261103",
+  "task": "FetchPushDense-v4",
+  "training_seed": 21,
+  "dataset": "artifacts/v12/fetch_push_b/seed_21/train_dataset",
+  "normalization": "artifacts/v12/fetch_push_b/seed_21/state_normalization.npz",
+  "act_checkpoint": "artifacts/v12/fetch_push_b/seed_21/act/checkpoint.pt",
+  "act_updates": 2000,
+  "diffusion_updates": 30000,
+  "batch_size": 64,
+  "learning_rate": 0.0005,
+  "confirmatory_seed_start": 80000,
+  "confirmatory_episodes": 50,
+  "model_selection": "final_checkpoint_only",
+  "comparison": "approximately_matched_cpu_training_wall_time; exact wall time reported"
+}
