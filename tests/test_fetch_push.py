@@ -23,3 +23,15 @@ def test_fetch_push_expert_and_dataset():
     episode = collect_expert(1, 3)[0]
     episode.validate()
     assert episode.success and episode.states.shape[1] == 28
+
+
+def test_friction_shift_isolated_to_new_environment():
+    nominal = FetchPush(17)
+    shifted = FetchPush(17, friction_scale=2.0)
+    nominal.reset()
+    shifted.reset()
+    nominal_friction = nominal.env.unwrapped.model.geom("object0").friction[0]
+    shifted_friction = shifted.env.unwrapped.model.geom("object0").friction[0]
+    assert shifted_friction == pytest.approx(2 * nominal_friction)
+    nominal.close()
+    shifted.close()

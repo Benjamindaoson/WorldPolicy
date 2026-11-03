@@ -39,11 +39,17 @@ def flatten(observation: dict) -> np.ndarray:
 class FetchPush:
     version = f"FetchPushDense-v4_gymnasium_robotics_{gymnasium_robotics.__version__}_mujoco_{mujoco.__version__}"
 
-    def __init__(self, seed: int, render: bool = False, max_steps: int = 80):
+    def __init__(self, seed: int, render: bool = False, max_steps: int = 80,
+                 friction_scale: float = 1.0):
         self.seed = seed
         self.max_steps = max_steps
+        if friction_scale <= 0:
+            raise ValueError("friction_scale must be positive")
+        self.friction_scale = friction_scale
         self.env = gym.make("FetchPushDense-v4", max_episode_steps=max_steps,
                             render_mode="rgb_array" if render else None)
+        object_geom = self.env.unwrapped.model.geom("object0").id
+        self.env.unwrapped.model.geom_friction[object_geom] *= friction_scale
         self.raw: dict | None = None
 
     def reset(self) -> np.ndarray:
@@ -128,8 +134,9 @@ class PushExpert:
         return action
 
 
-def rollout(seed: int, policy, *, video: bool = False, max_steps: int = 80) -> dict:
-    env = FetchPush(seed, render=video, max_steps=max_steps)
+def rollout(seed: int, policy, *, video: bool = False, max_steps: int = 80,
+            friction_scale: float = 1.0) -> dict:
+    env = FetchPush(seed, render=video, max_steps=max_steps, friction_scale=friction_scale)
     state = env.reset()
     initial = {"gripper": state[:3].tolist(), "object": state[3:6].tolist(),
                "goal": state[25:28].tolist()}
@@ -150,7 +157,8 @@ def rollout(seed: int, policy, *, video: bool = False, max_steps: int = 80) -> d
     result = {"seed": seed, "initial": initial, "states": states, "actions": actions,
               "rewards": rewards, "success": success, "goal_distance": info["goal_distance"],
               "termination": "success" if success else "time_limit",
-              "simulator": env.version, "task": "FetchPushDense-v4", "evidence": "SIMULATION"}
+              "simulator": env.version, "task": "FetchPushDense-v4", "evidence": "SIMULATION",
+              "object_friction_scale": friction_scale}
     if video:
         result["frames"] = np.asarray(frames, dtype=np.uint8)
     env.close()
