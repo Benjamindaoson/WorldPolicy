@@ -1,0 +1,19 @@
+{
+  "protocol_id": "v13_visual_fetch_push_20261103",
+  "training_episode_seed_start": 90000,
+  "training_episodes": 48,
+  "validation_episode_seed_start": 91000,
+  "validation_episodes": 12,
+  "confirmatory_episode_seed_start": 92000,
+  "confirmatory_episodes": 20,
+  "camera_shift_m": [0.05, 0.0, 0.0],
+  "camera_shift_evaluation_episodes": 10,
+  "training_seed": 31,
+  "updates": 600,
+  "batch_size": 32,
+  "learning_rate": 0.0005,
+  "observation_history": 2,
+  "action_chunk": 4,
+  "student_input": "two RGB cameras; optional robot proprioception only",
+  "model_selection": "final checkpoint fixed; no confirmation-set tuning"
+}

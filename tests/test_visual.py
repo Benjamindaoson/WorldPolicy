@@ -1,0 +1,52 @@
+import numpy as np
+import pytest
+import torch
+
+from worldpolicy.visual_data import (
+    PROPRIO_INDICES,
+    collect_visual_episode,
+    proprio_from_state,
+    visual_chunks,
+)
+from worldpolicy.visual_policy import VisualPolicy
+
+
+def test_dual_camera_sync_and_information_boundary():
+    episode = collect_visual_episode(12)
+    episode.validate()
+    assert episode.images.shape[1:] == (2, 64, 64, 3)
+    assert len(episode.images) == len(episode.actions) == len(episode.timestamps)
+    assert np.mean(np.abs(episode.images[0, 0].astype(float) - episode.images[0, 1])) > 1
+    assert all(index not in PROPRIO_INDICES for index in (3, 4, 5, 25, 26, 27))
+    state = np.arange(28, dtype=np.float32)
+    changed = state.copy()
+    changed[[3, 4, 5, 25, 26, 27]] = 1e6
+    np.testing.assert_equal(proprio_from_state(state), proprio_from_state(changed))
+
+
+def test_visual_policy_forward_backward_and_no_proprio_leakage():
+    torch.set_num_threads(1)
+    pixels = torch.randint(0, 255, (2, 2, 2, 3, 64, 64), dtype=torch.uint8)
+    proprio = torch.randn(2, 2, 10)
+    actions = torch.randn(2, 4, 4).clamp(-1, 1)
+    vision_only = VisualPolicy("act", use_proprio=False)
+    vision_only.eval()
+    with torch.no_grad():
+        a = vision_only.act(pixels, proprio)
+        b = vision_only.act(pixels, proprio + 100)
+    torch.testing.assert_close(a, b)
+    multimodal = VisualPolicy("diffusion", use_proprio=True)
+    loss = multimodal.loss(pixels, proprio, actions)
+    loss.backward()
+    assert torch.isfinite(loss) and multimodal.image_encoder[0].weight.grad is not None
+    with pytest.raises(ValueError, match="shape"):
+        multimodal.loss(pixels, torch.zeros(2, 3, 10), actions)
+
+
+def test_visual_chunk_alignment():
+    episode = collect_visual_episode(3)
+    images, proprio, actions = visual_chunks([episode], history=2, horizon=4)
+    assert images.shape[1:] == (2, 2, 64, 64, 3)
+    assert proprio.shape[1:] == (2, 10)
+    np.testing.assert_equal(images[0, 0], episode.images[0])
+    np.testing.assert_equal(actions[0], episode.actions[:4])

@@ -40,16 +40,21 @@ class FetchPush:
     version = f"FetchPushDense-v4_gymnasium_robotics_{gymnasium_robotics.__version__}_mujoco_{mujoco.__version__}"
 
     def __init__(self, seed: int, render: bool = False, max_steps: int = 80,
-                 friction_scale: float = 1.0):
+                 friction_scale: float = 1.0,
+                 camera_shift: tuple[float, float, float] = (0.0, 0.0, 0.0)):
         self.seed = seed
         self.max_steps = max_steps
         if friction_scale <= 0:
             raise ValueError("friction_scale must be positive")
         self.friction_scale = friction_scale
+        self.camera_shift = camera_shift
         self.env = gym.make("FetchPushDense-v4", max_episode_steps=max_steps,
                             render_mode="rgb_array" if render else None)
         object_geom = self.env.unwrapped.model.geom("object0").id
         self.env.unwrapped.model.geom_friction[object_geom] *= friction_scale
+        head_camera = self.env.unwrapped.model.camera("head_camera_rgb").id
+        self.env.unwrapped.model.cam_pos[head_camera] += camera_shift
+        self._renderer: mujoco.Renderer | None = None
         self.raw: dict | None = None
 
     def reset(self) -> np.ndarray:
@@ -71,6 +76,18 @@ class FetchPush:
         if frame is None:
             raise RuntimeError("Rendering was not enabled")
         return frame
+
+    def camera_frames(self, size: int = 64) -> np.ndarray:
+        """Synchronized fixed and gripper camera RGB frames, captured before the next action."""
+        if self._renderer is None:
+            self._renderer = mujoco.Renderer(self.env.unwrapped.model, height=size, width=size)
+        if self._renderer.height != size or self._renderer.width != size:
+            raise ValueError("Camera resolution changed within one episode")
+        frames = []
+        for name in ("head_camera_rgb", "gripper_camera_rgb"):
+            self._renderer.update_scene(self.env.unwrapped.data, camera=name)
+            frames.append(self._renderer.render().copy())
+        return np.stack(frames)
 
     def snapshot(self) -> FetchSnapshot:
         raw = self.env.unwrapped
@@ -96,6 +113,8 @@ class FetchPush:
         return flatten(self.raw)
 
     def close(self) -> None:
+        if self._renderer is not None:
+            self._renderer.close()
         self.env.close()
 
 
