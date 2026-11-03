@@ -8,6 +8,7 @@ from worldpolicy.visual_data import (
     proprio_from_state,
     visual_chunks,
 )
+from worldpolicy.visual_experiment import train_visual
 from worldpolicy.visual_policy import VisualPolicy
 
 
@@ -63,3 +64,27 @@ def test_task_visible_cameras_show_target_and_object():
     # The explicit red task marker and dark object are visible in both views.
     assert all(np.count_nonzero(frame[:, :, 0] > frame[:, :, 1] + 80) > 3 for frame in image)
     assert all(np.count_nonzero(np.mean(frame, axis=-1) < 80) > 3 for frame in image)
+
+
+def test_object_shift_changes_only_reset_object_position():
+    from worldpolicy.fetch_push import FetchPush
+
+    base = FetchPush(90000, camera_setup="task_visible")
+    shifted = FetchPush(90000, camera_setup="task_visible", object_shift=(.03, 0.))
+    a, b = base.reset(), shifted.reset()
+    np.testing.assert_allclose(b[3] - a[3], .03, atol=1e-5)
+    np.testing.assert_allclose(a[25:28], b[25:28], atol=1e-6)
+    base.close()
+    shifted.close()
+
+
+def test_visual_training_resume_restores_rng_and_optimizer(tmp_path):
+    images = np.zeros((4, 2, 2, 64, 64, 3), dtype=np.uint8)
+    proprio = np.zeros((4, 2, 10), dtype=np.float32)
+    actions = np.zeros((4, 4, 4), dtype=np.float32)
+    original = VisualPolicy("act", use_proprio=False)
+    train_visual(original, images, proprio, actions, tmp_path, 101, 2, 5e-4, 31)
+    resumed = VisualPolicy("act", use_proprio=False)
+    train_visual(resumed, images, proprio, actions, tmp_path, 101, 2, 5e-4, 31, resume=True)
+    for name, value in original.state_dict().items():
+        torch.testing.assert_close(value, resumed.state_dict()[name], rtol=0, atol=0)

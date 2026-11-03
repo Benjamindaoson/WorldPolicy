@@ -42,7 +42,8 @@ class FetchPush:
     def __init__(self, seed: int, render: bool = False, max_steps: int = 80,
                  friction_scale: float = 1.0,
                  camera_shift: tuple[float, float, float] = (0.0, 0.0, 0.0),
-                 camera_setup: str = "legacy"):
+                 camera_setup: str = "legacy",
+                 object_shift: tuple[float, float] = (0.0, 0.0)):
         self.seed = seed
         self.max_steps = max_steps
         if friction_scale <= 0:
@@ -52,6 +53,9 @@ class FetchPush:
         if camera_setup not in ("legacy", "task_visible"):
             raise ValueError("Unknown FetchPush camera setup")
         self.camera_setup = camera_setup
+        if max(abs(float(value)) for value in object_shift) > .05:
+            raise ValueError("Object position shift exceeds 5cm diagnostic bound")
+        self.object_shift = object_shift
         self.env = gym.make("FetchPushDense-v4", max_episode_steps=max_steps,
                             render_mode="rgb_array" if render else None)
         object_geom = self.env.unwrapped.model.geom("object0").id
@@ -64,6 +68,12 @@ class FetchPush:
 
     def reset(self) -> np.ndarray:
         self.raw, _ = self.env.reset(seed=self.seed)
+        if self.object_shift != (0.0, 0.0):
+            raw = self.env.unwrapped
+            address = raw.model.joint("object0:joint").qposadr[0]
+            raw.data.qpos[address:address + 2] += self.object_shift
+            mujoco.mj_forward(raw.model, raw.data)
+            self.raw = raw._get_obs()
         return flatten(self.raw)
 
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:

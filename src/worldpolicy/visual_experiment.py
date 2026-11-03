@@ -112,8 +112,10 @@ def load_visual(model: VisualPolicy, checkpoint: Path, digest: str) -> None:
 
 def visual_rollout(model: VisualPolicy, seed: int,
                    camera_shift: tuple[float, float, float] = (0, 0, 0),
-                   camera_setup: str = "legacy") -> dict:
-    env = FetchPush(seed, camera_shift=camera_shift, camera_setup=camera_setup)
+                   camera_setup: str = "legacy",
+                   object_shift: tuple[float, float] = (0, 0)) -> dict:
+    env = FetchPush(seed, camera_shift=camera_shift, camera_setup=camera_setup,
+                    object_shift=object_shift)
     state = env.reset()
     images: deque[np.ndarray] = deque(maxlen=model.history)
     proprio: deque[np.ndarray] = deque(maxlen=model.history)
@@ -140,10 +142,36 @@ def visual_rollout(model: VisualPolicy, seed: int,
     result = {"seed": seed, "success": info["success"], "goal_distance": info["goal_distance"],
               "steps": len(actions), "actions": actions, "rewards": rewards,
               "inference_ms_p50": float(np.median(latencies)),
-              "camera_shift_m": camera_shift, "evidence": "SIMULATION",
+              "camera_shift_m": camera_shift, "object_shift_m": object_shift,
+              "evidence": "SIMULATION",
               "student_observation": "RGB only" if not model.use_proprio else "RGB plus robot proprio"}
     env.close()
     return result
+
+
+def collect_datasets(config_path: Path, output: Path) -> dict:
+    """Collect frozen demonstrations before a GPU resource probe."""
+    config = json.loads(config_path.read_text())
+    train_seeds = range(config["training_episode_seed_start"],
+                        config["training_episode_seed_start"] + config["training_episodes"])
+    val_seeds = range(config["validation_episode_seed_start"],
+                      config["validation_episode_seed_start"] + config["validation_episodes"])
+    if set(train_seeds) & set(val_seeds):
+        raise ValueError("Train/validation seed leakage")
+    train_dir, val_dir = output / "train_dataset", output / "validation_dataset"
+    if train_dir.exists() or val_dir.exists():
+        raise FileExistsError("Dataset directory exists; choose a unique run ID")
+    camera_setup = config.get("camera_setup", "legacy")
+    train_manifest = save_visual_dataset(
+        [collect_visual_episode(seed, camera_setup=camera_setup) for seed in train_seeds],
+        train_dir, camera_setup)
+    val_manifest = save_visual_dataset(
+        [collect_visual_episode(seed, camera_setup=camera_setup) for seed in val_seeds],
+        val_dir, camera_setup)
+    return {"train_episodes": len(train_manifest["episodes"]),
+            "validation_episodes": len(val_manifest["episodes"]),
+            "train_manifest_sha256": sha256((train_dir / "manifest.json").read_bytes()).hexdigest(),
+            "validation_manifest_sha256": sha256((val_dir / "manifest.json").read_bytes()).hexdigest()}
 
 
 def run(config_path: Path, output: Path, device: str = "cpu", resume: bool = False) -> dict:
@@ -157,18 +185,13 @@ def run(config_path: Path, output: Path, device: str = "cpu", resume: bool = Fal
         raise ValueError("Visual experiment seed leakage")
     output.mkdir(parents=True, exist_ok=True)
     train_dir, val_dir = output / "train_dataset", output / "validation_dataset"
-    train_seeds = sorted(groups[0])
-    val_seeds = sorted(groups[1])
     camera_setup = config.get("camera_setup", "legacy")
     if not resume:
-        if train_dir.exists() or val_dir.exists():
-            raise FileExistsError("Visual run directory already contains datasets; choose a new run ID")
-        save_visual_dataset([collect_visual_episode(seed, camera_setup=camera_setup)
-                             for seed in train_seeds], train_dir, camera_setup)
-        save_visual_dataset([collect_visual_episode(seed, camera_setup=camera_setup)
-                             for seed in val_seeds], val_dir, camera_setup)
+        collect_datasets(config_path, output)
     training, train_manifest = load_visual_dataset(train_dir)
     validation, _ = load_visual_dataset(val_dir)
+    if {ep.seed for ep in training} != groups[0] or {ep.seed for ep in validation} != groups[1]:
+        raise ValueError("Visual dataset seed protocol mismatch")
     images, proprio, actions = visual_chunks(training, config["observation_history"], config["action_chunk"])
     vi, vp, va = visual_chunks(validation, config["observation_history"], config["action_chunk"])
     valid_pixels, valid_robot = torch_inputs(vi, vp)
@@ -244,8 +267,11 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=Path("artifacts/v13/visual_fetch_push"))
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--collect-only", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(run(args.config, args.output, args.device, args.resume), indent=2))
+    result = (collect_datasets(args.config, args.output) if args.collect_only else
+              run(args.config, args.output, args.device, args.resume))
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
