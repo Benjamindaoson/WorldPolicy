@@ -1,0 +1,10 @@
+seed: 7
+episodes: 32
+horizon: 4
+hidden: 128
+timesteps: 20
+steps: 300
+batch_size: 32
+lr: 0.001
+evaluation_episodes: 8
+output: artifacts

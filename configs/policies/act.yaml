@@ -1,0 +1,12 @@
+seed: 7
+episodes: 32
+horizon: 4
+hidden: 64
+latent: 16
+layers: 2
+heads: 4
+steps: 120
+batch_size: 32
+lr: 0.0005
+evaluation_episodes: 8
+output: artifacts
