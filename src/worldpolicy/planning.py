@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -61,7 +62,8 @@ class PhysicsOracle:
 class CEMPlanner:
     def __init__(self, model: WorldModelAdapter, spec: ActionSpec, horizon: int = 8,
                  population: int = 128, elites: int = 16, iterations: int = 4,
-                 seed: int = 0, uncertainty_weight: float = 1.0):
+                 seed: int = 0, uncertainty_weight: float = 1.0,
+                 terminal_cost: Callable[[np.ndarray], np.ndarray] | None = None):
         check_contract(model, spec, horizon)
         if not 0 < elites <= population or iterations < 1:
             raise ValueError("Invalid CEM configuration")
@@ -69,6 +71,7 @@ class CEMPlanner:
         self.population, self.elites, self.iterations = population, elites, iterations
         self.rng = np.random.default_rng(seed)
         self.uncertainty_weight = uncertainty_weight
+        self.terminal_cost = terminal_cost
 
     def plan(self, state: np.ndarray) -> tuple[np.ndarray, dict]:
         if state.shape != self.model.metadata.observation_shape or not np.isfinite(state).all():
@@ -84,7 +87,10 @@ class CEMPlanner:
             future, uncertainty = self.model.predict(state, candidates)
             if future.shape != (self.population, self.horizon, len(state)) or uncertainty.shape != (self.population, self.horizon):
                 raise ValueError("World model prediction shape mismatch")
-            cost = np.linalg.norm(future[:, -1, 2:4], axis=1)
+            cost = (self.terminal_cost(future[:, -1]) if self.terminal_cost
+                    else np.linalg.norm(future[:, -1, 2:4], axis=1))
+            if cost.shape != (self.population,) or not np.isfinite(cost).all():
+                raise ValueError("Invalid planner terminal cost")
             cost += self.uncertainty_weight * uncertainty.mean(axis=1)
             cost += .01 * np.square(np.diff(candidates, axis=1)).mean(axis=(1, 2))
             elite = np.argsort(cost)[:self.elites]
