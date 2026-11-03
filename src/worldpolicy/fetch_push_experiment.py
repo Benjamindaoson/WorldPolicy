@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import argparse
-from hashlib import sha256
 import json
-from pathlib import Path
 import subprocess
 import time
+from hashlib import sha256
+from pathlib import Path
 
 import numpy as np
 import torch
 
 from .data import chunks, load_dataset, save_dataset
-from .fetch_push import PushExpert, collect_expert, rollout
+from .fetch_push import collect_expert, rollout
 from .policies import ACT, DiffusionPolicy
 from .statistics import paired_counts, wilson_interval
 from .training import load_checkpoint, seed_all, train
@@ -70,7 +70,7 @@ def run(config_path: Path, output: Path, *, training_seeds: list[int] | None = N
         val_episodes = collect_expert(config["validation_episodes_per_seed"], val_start)
         save_dataset(train_episodes, root / "train_dataset")
         save_dataset(val_episodes, root / "validation_dataset")
-        train_pairs, manifest = load_dataset(root / "train_dataset")
+        train_pairs, _ = load_dataset(root / "train_dataset")
         val_pairs, _ = load_dataset(root / "validation_dataset")
         if set(range(train_start, train_start + len(train_episodes))) & set(
             range(val_start, val_start + len(val_episodes))
