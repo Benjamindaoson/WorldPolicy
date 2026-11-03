@@ -1,0 +1,7 @@
+# Public release audit (2026-11-03)
+
+Candidate: `develop/worldpolicy-v1.3`, based on the complete local V1/V1.1/V1.2/V1.3 Git history. `scripts/publication_audit.py` scanned 153 distinct historical Git blobs before this release commit. It found no recognized GitHub/AWS credential or private-key pattern and no blob above 1 MB. The tracked tree contains 104 files before this commit; no checkpoint, video, `.npz`, virtual environment, cache, `.env`, or local `artifacts/`/`results/` file is tracked. This is a pattern-based audit, not a guarantee against every possible secret.
+
+The public README reports only measured state-input MuJoCo FetchPush results and clearly identifies negative visual and model-based RL runs. Raw datasets, weights, per-episode traces, MuJoCo videos, and the Git Bundle remain local. Reproduction protocols and small truthful summaries are in `configs/` and `docs/`. No official LIBERO or SmolVLA checkpoint or third-party training dataset is bundled. External software and datasets retain their upstream licenses. WorldPolicy itself currently has no license grant, which the README states explicitly.
+
+The local `origin` points to `https://github.com/Benjamindaoson/WorldPolicy.git`. The GitHub connector saw a public, size-zero repository with zero branches before the first push attempt. Local Git HTTPS could not connect to `github.com:443`; remote creation must be verified independently of that failure.
