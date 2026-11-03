@@ -1,0 +1,7 @@
+# Standard MuJoCo manipulation task
+
+Status: IMPLEMENTED / TESTED / CPU_VERIFIED. V1.1's custom two-link reach remains a regression task. V1.2 uses [Farama Gymnasium-Robotics FetchPush-v4](https://robotics.farama.org/main/envs/fetch/push/): a 7-DoF Fetch arm pushes a block across a table. `gymnasium-robotics==1.4.2`, `gymnasium==1.4.0`, MuJoCo 3.17.0 ran locally on Windows CPU. The official task uses 4D bounded end-effector/gripper control at 25 Hz, MuJoCo contact physics and a 0.05 m block-goal success threshold. We use the dense-reward variant, raise the episode cap to 80 steps and stop our evaluation rollout on first success.
+
+`src/worldpolicy/fetch_push.py` exposes 28D state/goal input, 4D action protocol, exact seeded reset, snapshot/restore, RGB rendering, rewards and success. Its finite-state geometric demonstration controller succeeded on 19/20 preliminary seeds and on 55/64, 58/64 and 59/64 episodes in the three saved training sets. Failures were retained. It is an imperfect hand controller, not an expert from the official benchmark.
+
+The chain `collect_expert → SHA256 dataset manifest → ACT/DDPM training → checkpoint reload → held-out closed-loop FetchPush` was executed. Every test episode stores seed, object/gripper/goal initial state, state/action/reward sequence, success and final distance. V1.2b success/failure MP4 examples are local ignored artifacts; no real robot was used. Pick-and-place was not implemented.

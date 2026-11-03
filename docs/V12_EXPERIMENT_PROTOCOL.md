@@ -1,0 +1,9 @@
+# Frozen V1.2 protocols and statistical interpretation
+
+Status: IMPLEMENTED / CPU_VERIFIED for FetchPush ID experiments. The protocols were committed before their corresponding executions: V1.2a `configs/v12/fetch_push_protocol.json` (commit `be4fb1d`, then runner `9252b6c`), V1.2b `fetch_push_protocol_b.json` (commit `f3f82d0`), V1.2c `fetch_push_compute_control.json` (commit `e01c5f6`). Each result JSON stores protocol SHA256 and source commit where applicable.
+
+Training seeds 21,22,23 use disjoint demonstration episode ranges 10000+,11000+,12000+ and independent validation ranges 20000+,21000+,22000+. Exploratory episodes use 30000–30009. V1.2a confirmation uses 40000–40049; after diagnosing its failures, V1.2b was frozen with new 60000–60049 seeds. V1.2c approximate CPU-time control uses fresh 80000–80049 seeds. V1.2b object-friction OOD reserves 70000–70049, evaluated under nominal and doubled object friction on paired initial states. No post hoc seed filtering is permitted.
+
+Primary metric is task success within 80 steps. Secondary records include goal distance, per-step actions/rewards, completion length, inference latency and friction OOD gap. Wilson 95% intervals describe each policy's success on one set of initial states. Exact two-sided McNemar tests use discordant pairs within a training seed. Because training seeds share evaluation initial states, a pooled 150-episode binomial CI or p-value would overstate independence. Three training seeds remain too few for a robust population-level algorithm claim. Fixed updates are not fixed compute; V1.2c measures actual CPU training time.
+
+Stop/go: learned planning must match or exceed a non-model control on a fresh protocol before downstream world-model benefit is claimed. Official VLA/LIBERO experiments require a compatible Linux environment and pinned upstream revisions. No robot motion is authorized.

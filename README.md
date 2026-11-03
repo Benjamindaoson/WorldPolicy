@@ -16,6 +16,7 @@ Can learned world models improve robot policies under fixed data, compute, and i
 - Continuous-action IQL with expectile value regression, double Q targets, and advantage-weighted actor update.
 - Fail-closed real-robot gate. There is no motor-control transport in this version.
 - V1.1: custom MuJoCo two-joint reach, paired ACT/Diffusion training and evaluation, corrected diffusion schedule and IQL replay, checkpoint resume, and CEM failure diagnostics. See [V1.1 report](docs/V11_EXPERIMENT_REPORT.md).
+- V1.2: official Gymnasium-Robotics `FetchPushDense-v4` contact task; three-seed ACT/DDPM baselines with fresh confirmatory test states; real MuJoCo physics-oracle and learned-dynamics planning. See [V1.2 status](docs/V12_IMPLEMENTATION_STATUS.md) and [policy results](docs/V12_POLICY_BASELINES.md). The learned dynamics planner currently underperforms the oracle.
 
 ## Reproduction
 
@@ -34,6 +35,10 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m worldpolicy.mujoco_experiment
 .\.venv\Scripts\python.exe scripts/record_mujoco_failure.py
 .\.venv\Scripts\python.exe -m worldpolicy.diagnostics
+.\.venv\Scripts\python.exe -m pip install -e ".[manipulation]"
+.\.venv\Scripts\python.exe -m worldpolicy.fetch_push_experiment --config configs/v12/fetch_push_protocol_b.json --output artifacts/v12/fetch_push_b
+.\.venv\Scripts\python.exe -m worldpolicy.fetch_push_dynamics
+.\.venv\Scripts\python.exe -m worldpolicy.fetch_push_planning --learned-checkpoint artifacts/v12/fetch_push_dynamics/checkpoint.pt
 ```
 
 Training artifacts and evaluation episode records are generated under ignored `artifacts/` and `results/`. They are local evidence and are not committed as scientific results. See `docs/IMPLEMENTATION_STATUS.md` for actual execution status and limitations.
