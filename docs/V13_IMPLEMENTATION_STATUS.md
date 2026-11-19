@@ -1,3 +1,5 @@
+> **Historical snapshot:** This implementation-status report records the earlier local/pre-rental validation stage. Subsequent GPU-backed research iterations have used rented NVIDIA RTX 4090 24GB resources; those later runs are not represented by the original local status table. Official LIBERO/SmolVLA and real-robot claims remain gated on their own verified artifacts.
+
 # V1.3 implementation and verification status
 
 | Workstream | Status | Evidence / limit |
