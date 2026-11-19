@@ -1,3 +1,5 @@
+> **Status update (2026-11-19):** This document captures the original GPU-sizing plan before rental. Rented NVIDIA RTX 4090 24GB resources have since been used for GPU-backed research iterations; the original sizing estimates below remain planning notes, not measured resource limits for later runs.
+
 # GPU resource requirements — 2026-11-03
 
 ## Measured local gate
