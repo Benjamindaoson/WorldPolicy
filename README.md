@@ -2,6 +2,16 @@
 
 WorldPolicy is an auditable research codebase for continuous robot policy learning and world-model-assisted control. Its established manipulation results use **privileged state input in MuJoCo Gymnasium-Robotics `FetchPushDense-v4`**. They are simulation results, not official LIBERO, language-conditioned VLA, or real-robot results.
 
+## CS 6999 research portfolio summary
+
+**Research focus:** Robot policy learning and learned-dynamics planning, with ACT-style CVAE Transformers, compact DDPM Diffusion Policy, and CEM-based model-predictive control.
+
+**Measured evidence:** Across three seeds and 50 paired initial states per seed, state-only ACT achieved 27/50, 35/50, and 33/50 successes; the tested compact diffusion baseline achieved 5/50, 6/50, and 11/50. An approximately equal-CPU single-seed control produced 22/50 versus 8/50. Learned-dynamics CEM achieved 3/10 versus 10/10 for the MuJoCo physics-oracle reference on the exploratory test.
+
+**Compute context:** Current GPU-backed research iterations use rented NVIDIA RTX 4090 24GB resources. CPU-seconds reported in the policy comparison are CPU-time measurements, not GPU throughput.
+
+**Scope boundary:** The established FetchPush results use privileged state in MuJoCo. They are not official LIBERO, language-conditioned VLA, or real-robot results, and do not establish general ACT superiority. Older pre-rental environment notes are historical snapshots.
+
 ## What runs
 
 - ACT-style CVAE Transformer and conditional DDPM Diffusion Policy, with action chunks, checkpoint save/load, and closed-loop evaluation.
