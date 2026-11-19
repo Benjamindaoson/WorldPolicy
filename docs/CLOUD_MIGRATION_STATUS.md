@@ -1,3 +1,5 @@
+> **Status update (2026-11-19):** This document records the earlier pre-rental planning state. Subsequent GPU-backed research iterations have used rented NVIDIA RTX 4090 24GB resources. This update does not change the evidence boundary: the repository still does not claim official LIBERO/SmolVLA benchmark completion or real-robot validation without corresponding run artifacts.
+
 # Cloud migration status
 
 | Item | Status | Evidence / next gate |
